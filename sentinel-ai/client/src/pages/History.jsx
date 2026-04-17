@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ClipboardList, Search, X, Trash2, ChevronRight, Shield } from 'lucide-react';
 import { useSentinel } from '../context/SentinelContext';
 import ThreatMeter from '../components/ThreatMeter';
 import ThreatDNA from '../components/ThreatDNA';
 import toast from 'react-hot-toast';
 
 const SEVERITY_SCORES = { Low: 25, Medium: 55, High: 85 };
-const CLASS_COLORS = {
-  Phishing: '#FF2D55',
-  Malware: '#A855F7',
-  'Social Engineering': '#FFB300',
-  Safe: '#00E676',
+const CLASSIFICATION_MAP = {
+  Phishing: { cls: 'verdict-phishing', icon: '🎣' },
+  Malware: { cls: 'verdict-malware', icon: '🦠' },
+  'Social Engineering': { cls: 'verdict-social', icon: '🧠' },
+  Safe: { cls: 'verdict-safe', icon: '✅' },
 };
 
 const FILTER_TABS = ['All', 'Phishing', 'Malware', 'Social Engineering', 'Safe'];
@@ -19,217 +18,189 @@ const FILTER_TABS = ['All', 'Phishing', 'Malware', 'Social Engineering', 'Safe']
 export default function History() {
   const { scanHistory, clearHistory } = useSentinel();
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('All');
-  const [selectedScan, setSelectedScan] = useState(null);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [filter, setFilter] = useState('All');
+  const [drawerItem, setDrawerItem] = useState(null);
 
   const filtered = scanHistory.filter(scan => {
+    const matchType = filter === 'All' || scan.analysis?.classification === filter;
     const matchSearch = !search || scan.content?.toLowerCase().includes(search.toLowerCase());
-    const matchType = filterType === 'All' || scan.analysis.classification === filterType;
-    return matchSearch && matchType;
+    return matchType && matchSearch;
   });
 
   return (
-    <div className="space-y-5">
-      {/* Title Row */}
-      <motion.div className="flex items-start justify-between" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+    <div>
+      {/* Title + Clear */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 className="text-xl font-black text-white flex items-center gap-2 font-mono tracking-wide">
-            <ClipboardList className="w-6 h-6 text-sentinel-cyan" />
-            Threat History
-          </h1>
-          <p className="text-xs text-sentinel-text-muted mt-0.5 font-mono">{scanHistory.length} scans this session</p>
+          <div className="page-title">📋 Threat History</div>
+          <div className="page-subtitle">{scanHistory.length} scans this session</div>
         </div>
         {scanHistory.length > 0 && (
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold font-mono transition-all hover:scale-105"
-            style={{ background: 'rgba(255, 45, 85, 0.12)', color: '#FF2D55', border: '1px solid rgba(255, 45, 85, 0.25)' }}
-            onClick={() => {
-              if (showClearConfirm) {
-                clearHistory();
-                setShowClearConfirm(false);
-                toast.success('History cleared');
-              } else {
-                setShowClearConfirm(true);
-                setTimeout(() => setShowClearConfirm(false), 3000);
-              }
-            }}
-          >
-            <Trash2 className="w-3 h-3" />
-            {showClearConfirm ? 'Confirm?' : 'Clear History'}
+          <button className="btn-danger" onClick={() => { clearHistory(); toast.success('History cleared'); }}>
+            🗑 Clear History
           </button>
         )}
-      </motion.div>
+      </div>
 
-      {/* Search + Filter Tabs */}
-      <motion.div
-        className="flex items-center gap-3 p-3 rounded-xl"
-        style={{ background: 'rgba(11, 17, 32, 0.6)', border: '1px solid rgba(0, 217, 255, 0.06)' }}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-      >
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sentinel-text-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search scans..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-sentinel-cyan/30"
-            style={{ background: 'rgba(17, 24, 39, 0.6)', border: '1px solid rgba(30, 41, 59, 0.3)', color: '#E2E8F0' }}
-          />
-        </div>
-        <div className="flex gap-1">
-          {FILTER_TABS.map(tab => (
+      {/* Search + Filter */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <input
+          style={{
+            flex: 1,
+            background: 'rgba(0,255,234,0.03)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 8,
+            color: '#E2E8F0',
+            padding: '9px 14px',
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 12,
+            outline: 'none',
+          }}
+          placeholder="🔍 Search scans..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          {FILTER_TABS.map(t => (
             <button
-              key={tab}
-              onClick={() => setFilterType(tab)}
-              className="px-3 py-1.5 rounded text-[11px] font-mono font-semibold transition-all"
-              style={{
-                background: filterType === tab ? 'rgba(0, 217, 255, 0.12)' : 'transparent',
-                color: filterType === tab ? '#00D9FF' : '#64748B',
-                border: filterType === tab ? '1px solid rgba(0, 217, 255, 0.2)' : '1px solid transparent',
-              }}
+              key={t}
+              className={`tab-btn ${filter === t ? 'tab-active' : 'tab-inactive'}`}
+              style={{ fontSize: 10 }}
+              onClick={() => setFilter(t)}
             >
-              {tab}
+              {t}
             </button>
           ))}
         </div>
-      </motion.div>
+      </div>
 
-      {/* Results */}
-      <motion.div
-        className="rounded-xl overflow-hidden"
-        style={{ background: 'rgba(11, 17, 32, 0.6)', border: '1px solid rgba(0, 217, 255, 0.06)' }}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        {filtered.length > 0 ? (
-          <div className="divide-y" style={{ borderColor: 'rgba(30, 41, 59, 0.3)' }}>
-            {filtered.map((scan, i) => {
-              const color = CLASS_COLORS[scan.analysis.classification] || '#00D9FF';
-              return (
-                <motion.div
-                  key={scan.id}
-                  className="flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-white/[0.02]"
-                  onClick={() => setSelectedScan(scan)}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.02 }}
-                >
-                  <span className="text-[11px] text-sentinel-text-muted font-mono w-6">{i + 1}</span>
-                  <span className="badge text-[10px] py-0.5 px-2" style={{
-                    background: `${color}12`, color, border: `1px solid ${color}25`,
-                  }}>
-                    {scan.analysis.classification}
-                  </span>
-                  <span className={`text-[11px] font-mono font-semibold w-14 ${
-                    scan.analysis.severity === 'High' ? 'text-sentinel-red' :
-                    scan.analysis.severity === 'Medium' ? 'text-sentinel-amber' : 'text-sentinel-green'
-                  }`}>
-                    {scan.analysis.severity}
-                  </span>
-                  <span className="text-[12px] text-sentinel-text-dim font-mono flex-1 truncate">
-                    {scan.content?.substring(0, 50)}...
-                  </span>
-                  <span className="text-[10px] text-sentinel-text-muted font-mono">
-                    {scan.analysis.confidence}%
-                  </span>
-                  <span className="text-[10px] text-sentinel-text-muted font-mono">
-                    {new Date(scan.timestamp).toLocaleTimeString()}
-                  </span>
-                  <ChevronRight className="w-3.5 h-3.5 text-sentinel-text-muted" />
-                </motion.div>
-              );
-            })}
+      {/* Table */}
+      <div className="card">
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#4A5568', fontSize: 13, fontFamily: "'Space Mono', monospace" }}>
+            {scanHistory.length === 0 ? '◉ No scans yet. Analyze some content to get started.' : 'No results match your filter.'}
           </div>
         ) : (
-          <div className="py-16 text-center">
-            <p className="text-sm text-sentinel-text-muted font-mono">
-              ● No scans yet. Analyze some content to get started.
-            </p>
-          </div>
+          <table className="hist-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>PREVIEW</th>
+                <th>TYPE</th>
+                <th>SEVERITY</th>
+                <th>CONFIDENCE</th>
+                <th>TIME</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((scan, i) => {
+                const vm = CLASSIFICATION_MAP[scan.analysis?.classification] || CLASSIFICATION_MAP.Safe;
+                const sevCls = scan.analysis?.severity === 'High' ? 'ind-red' : scan.analysis?.severity === 'Medium' ? 'ind-amber' : 'ind-green';
+                return (
+                  <tr key={scan.id} onClick={() => setDrawerItem(scan)}>
+                    <td style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#4A5568' }}>
+                      {scanHistory.length - scanHistory.indexOf(scan)}
+                    </td>
+                    <td style={{ maxWidth: 200 }}>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
+                        {scan.content?.substring(0, 60)}...
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`verdict ${vm.cls}`} style={{ fontSize: 10, padding: '4px 10px', letterSpacing: 1 }}>
+                        {vm.icon} {scan.analysis?.classification}
+                      </span>
+                    </td>
+                    <td><span className={`ind-chip ${sevCls}`}>{scan.analysis?.severity}</span></td>
+                    <td>
+                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#00FFEA' }}>
+                        {scan.analysis?.confidence}%
+                      </span>
+                    </td>
+                    <td style={{ fontFamily: "'Space Mono', monospace", fontSize: 10 }}>
+                      {new Date(scan.timestamp).toLocaleTimeString()}
+                    </td>
+                    <td>
+                      <button className="btn-ghost" style={{ padding: '5px 10px', fontSize: 10, fontFamily: "'Space Mono', monospace" }}
+                        onClick={e => { e.stopPropagation(); setDrawerItem(scan); }}>
+                        VIEW →
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-      </motion.div>
+      </div>
 
-      {/* Side Drawer */}
+      {/* Drawer */}
       <AnimatePresence>
-        {selectedScan && (
+        {drawerItem && (
           <>
+            <div className="drawer-bg" onClick={() => setDrawerItem(null)} />
             <motion.div
-              className="fixed inset-0 z-40 bg-black/50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedScan(null)}
-            />
-            <motion.div
-              className="fixed right-0 top-0 bottom-0 w-full max-w-lg z-50 overflow-y-auto"
-              style={{
-                background: '#0B1120',
-                borderLeft: '1px solid rgba(0, 217, 255, 0.08)',
-              }}
-              initial={{ x: '100%' }}
+              className="drawer"
+              initial={{ x: 500 }}
               animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              exit={{ x: 500 }}
               transition={{ type: 'spring', damping: 25 }}
             >
-              <div className="p-5 space-y-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-black text-white font-mono">Analysis Detail</h2>
-                  <button onClick={() => setSelectedScan(null)} className="p-1.5 rounded hover:bg-white/5">
-                    <X className="w-4 h-4 text-sentinel-text-muted" />
-                  </button>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div className="sec-label" style={{ margin: 0 }}>FULL ANALYSIS REPORT</div>
+                <button className="btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setDrawerItem(null)}>✕ Close</button>
+              </div>
 
-                <div className="p-4 rounded-xl text-center" style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(30, 41, 59, 0.3)' }}>
-                  <motion.div
-                    className="inline-block px-4 py-1.5 rounded text-sm font-black font-mono tracking-wider mb-3"
-                    style={{
-                      background: `${CLASS_COLORS[selectedScan.analysis.classification]}12`,
-                      color: CLASS_COLORS[selectedScan.analysis.classification],
-                      border: `1px solid ${CLASS_COLORS[selectedScan.analysis.classification]}30`,
-                    }}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring' }}
-                  >
-                    {selectedScan.analysis.classification?.toUpperCase()}
-                  </motion.div>
-                  <ThreatMeter
-                    score={SEVERITY_SCORES[selectedScan.analysis.severity] || 25}
-                    severity={selectedScan.analysis.severity}
-                    size={150}
-                  />
-                  <p className="text-[10px] text-sentinel-text-muted mt-2 font-mono">{selectedScan.analysis.threat_id}</p>
-                </div>
-
-                <div className="p-4 rounded-xl space-y-3" style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(30, 41, 59, 0.3)' }}>
-                  <h3 className="text-xs font-bold text-white font-mono flex items-center gap-2">
-                    <Shield className="w-3.5 h-3.5 text-sentinel-cyan" /> INTELLIGENCE REPORT
-                  </h3>
-                  <div className="space-y-2 text-[12px] text-sentinel-text-dim">
-                    <p>🔍 {selectedScan.analysis.explanation}</p>
-                    <p>⚠️ {selectedScan.analysis.why_dangerous}</p>
-                    <p>🎯 {selectedScan.analysis.attack_vector}</p>
-                    <p>🛡️ {selectedScan.analysis.recommended_action}</p>
+              {/* Verdict */}
+              <div className="card card-glow" style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  {(() => {
+                    const vm = CLASSIFICATION_MAP[drawerItem.analysis?.classification] || CLASSIFICATION_MAP.Safe;
+                    return <span className={`verdict ${vm.cls}`}>{vm.icon} {drawerItem.analysis?.classification}</span>;
+                  })()}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: '#4A5568', fontFamily: "'Space Mono', monospace" }}>THREAT ID</div>
+                    <div style={{ fontSize: 12, color: '#00FFEA', fontFamily: "'Space Mono', monospace" }}>{drawerItem.analysis?.threat_id}</div>
                   </div>
-                  {selectedScan.analysis.indicators?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-2" style={{ borderTop: '1px solid rgba(30, 41, 59, 0.3)' }}>
-                      {selectedScan.analysis.indicators.map((ind, i) => (
-                        <span key={i} className="indicator-chip text-[9px]">{ind}</span>
-                      ))}
-                    </div>
-                  )}
                 </div>
-
-                <div className="p-4 rounded-xl" style={{ background: 'rgba(17, 24, 39, 0.5)', border: '1px solid rgba(30, 41, 59, 0.3)' }}>
-                  <h3 className="text-xs font-bold text-white font-mono mb-3">🧬 THREAT DNA</h3>
-                  <ThreatDNA dna={selectedScan.analysis.dna} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <ThreatMeter score={SEVERITY_SCORES[drawerItem.analysis?.severity] || 25} severity={drawerItem.analysis?.severity} size={100} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, lineHeight: 1.5 }}>{drawerItem.analysis?.headline}</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10, color: '#718096', fontFamily: "'Space Mono', monospace" }}>CONFIDENCE:</span>
+                      <span style={{ fontSize: 11, color: '#00FFEA', fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>{drawerItem.analysis?.confidence}%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Intelligence Report */}
+              <div className="card" style={{ marginBottom: 12 }}>
+                <div className="sec-label" style={{ marginBottom: 12 }}>AI INTELLIGENCE REPORT</div>
+                <div style={{ fontSize: 13, lineHeight: 1.75, color: '#CBD5E1' }}>
+                  <div style={{ marginBottom: 8 }}><span style={{ fontSize: 11, color: '#00FFEA' }}>🔍 DETECTED: </span>{drawerItem.analysis?.explanation}</div>
+                  <div style={{ marginBottom: 8 }}><span style={{ fontSize: 11, color: '#FF2052' }}>⚠ DANGEROUS: </span>{drawerItem.analysis?.why_dangerous}</div>
+                  <div><span style={{ fontSize: 11, color: '#00FFA3' }}>🛡 ACTION: </span>{drawerItem.analysis?.recommended_action}</div>
+                </div>
+                {drawerItem.analysis?.indicators?.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div className="sec-label" style={{ marginBottom: 8 }}>THREAT INDICATORS</div>
+                    {drawerItem.analysis.indicators.map((ind, i) => (
+                      <span key={i} className="ind-chip ind-red">{ind}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* DNA */}
+              {drawerItem.analysis?.dna && (
+                <div className="card">
+                  <div className="sec-label" style={{ marginBottom: 12 }}>THREAT DNA BREAKDOWN</div>
+                  <ThreatDNA dna={drawerItem.analysis.dna} />
+                </div>
+              )}
             </motion.div>
           </>
         )}

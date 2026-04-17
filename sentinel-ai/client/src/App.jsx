@@ -83,7 +83,7 @@ function MobileNav() {
             key={item.path}
             href={item.path}
             className="flex flex-col items-center gap-0.5 py-2 px-3 min-w-[60px] transition-colors"
-            style={{ color: active ? '#00D9FF' : '#64748B' }}
+            style={{ color: active ? '#00FFEA' : '#4A5568' }}
             onClick={(e) => {
               e.preventDefault();
               window.history.pushState({}, '', item.path);
@@ -110,12 +110,12 @@ export default function App() {
           {/* Sidebar (Desktop) */}
           <Sidebar />
 
-          {/* Main Content — using inline style for reliable sidebar offset */}
-          <div className="main-content-area relative z-10 min-h-screen flex flex-col">
+          {/* Main Content */}
+          <div className="main-content-area relative z-10 flex flex-col" style={{ height: '100vh', overflow: 'hidden' }}>
             <Header />
-            <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
+            <div className="page-content">
               <AnimatedRoutes />
-            </main>
+            </div>
           </div>
 
           {/* Mobile Bottom Nav */}
@@ -126,12 +126,13 @@ export default function App() {
             position="top-right"
             toastOptions={{
               style: {
-                background: 'linear-gradient(135deg, #1A2332, #111827)',
-                color: '#E2E8F0',
-                border: '1px solid rgba(30, 41, 59, 0.5)',
-                borderRadius: '12px',
-                fontFamily: "'JetBrains Mono', monospace",
+                background: 'rgba(0,255,234,0.9)',
+                color: '#080C18',
+                border: '1px solid #00FFEA',
+                borderRadius: '8px',
+                fontFamily: "'Space Mono', monospace",
                 fontSize: '12px',
+                fontWeight: 600,
               },
               duration: 3000,
             }}

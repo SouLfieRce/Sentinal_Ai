@@ -1,164 +1,122 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FileText, Copy, FileJson, Printer, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSentinel } from '../context/SentinelContext';
 import { generateReportText, generateReportJSON } from '../utils/reportGenerator';
 
-const getLevel = (s) => {
-  if (s >= 81) return { label: 'Cyber Defender', dot: '🔵' };
-  if (s >= 61) return { label: 'Security Pro', dot: '🟢' };
-  if (s >= 41) return { label: 'Cyber Aware', dot: '🟡' };
-  if (s >= 21) return { label: 'Trainee', dot: '🟠' };
-  return { label: 'Novice Analyst', dot: '🔴' };
+const levelFor = (s) => {
+  if (s >= 81) return '🔵 Cyber Defender';
+  if (s >= 61) return '🟢 Security Pro';
+  if (s >= 41) return '🟡 Cyber Aware';
+  if (s >= 21) return '🟠 Trainee';
+  return '🔴 Novice Analyst';
 };
 
 export default function Reports() {
   const { scanHistory, awarenessScore, stats, simulatorScore, sessionStart } = useSentinel();
-  const level = getLevel(awarenessScore);
+  const threats = scanHistory.filter(h => h.analysis?.classification !== 'Safe');
+  const safe = scanHistory.filter(h => h.analysis?.classification === 'Safe');
 
-  const reportId = `RPT-${Date.now().toString(36).toUpperCase().slice(0, 8)}`;
+  const reportId = `RPT-${Date.now().toString(36).toUpperCase()}`;
+  const date = new Date().toLocaleString();
 
-  const handleExportPDF = () => {
-    window.print();
-    toast.success('Print dialog opened');
-  };
-
-  const handleExportJSON = () => {
+  const exportJSON = () => {
     const data = generateReportJSON(scanHistory, awarenessScore, stats, simulatorScore, sessionStart);
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sentinel-report-${Date.now()}.json`;
+    a.download = `sentinel-report-${reportId}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('JSON report downloaded');
+    toast.success('JSON report downloaded!');
   };
 
-  const handleCopySummary = () => {
+  const exportPDF = () => { window.print(); };
+
+  const copySummary = () => {
     const { report } = generateReportText(scanHistory, awarenessScore, stats, simulatorScore, sessionStart);
-    navigator.clipboard.writeText(report);
-    toast.success('Report copied to clipboard');
+    navigator.clipboard?.writeText(report);
+    toast.success('Summary copied!');
   };
 
   return (
-    <div className="space-y-5">
-      {/* Title + Export Buttons */}
-      <motion.div className="flex items-start justify-between" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 className="text-xl font-black text-white flex items-center gap-2 font-mono tracking-wide">
-            <FileText className="w-6 h-6 text-sentinel-cyan" />
-            Report Center
-          </h1>
-          <p className="text-xs text-sentinel-text-muted mt-0.5 font-mono">Export your session findings</p>
+          <div className="page-title">📄 Report Center</div>
+          <div className="page-subtitle">Export your session findings</div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={handleExportPDF}
-            className="flex items-center gap-1.5 px-4 py-2 rounded text-[11px] font-bold font-mono transition-all hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, #00D9FF, #0088FF)', color: '#0A0E1A' }}>
-            <Printer className="w-3.5 h-3.5" /> Export PDF
-          </button>
-          <button onClick={handleExportJSON}
-            className="flex items-center gap-1.5 px-4 py-2 rounded text-[11px] font-bold font-mono transition-all hover:scale-105"
-            style={{ background: 'rgba(0, 217, 255, 0.08)', color: '#00D9FF', border: '1px solid rgba(0, 217, 255, 0.2)' }}>
-            <FileJson className="w-3.5 h-3.5" /> JSON
-          </button>
-          <button onClick={handleCopySummary}
-            className="flex items-center gap-1.5 px-4 py-2 rounded text-[11px] font-bold font-mono transition-all hover:scale-105"
-            style={{ background: 'rgba(30, 41, 59, 0.3)', color: '#94A3B8', border: '1px solid rgba(30, 41, 59, 0.3)' }}>
-            <Copy className="w-3.5 h-3.5" /> Copy
-          </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-primary" style={{ padding: '10px 18px', fontSize: 12 }} onClick={exportPDF}>📄 Export PDF</button>
+          <button className="btn-ghost" style={{ padding: '10px 16px', fontSize: 12 }} onClick={exportJSON}>📦 JSON</button>
+          <button className="btn-ghost" style={{ padding: '10px 16px', fontSize: 12 }} onClick={copySummary}>📋 Copy</button>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Report Preview — White Card */}
-      <motion.div
-        className="print-container rounded-xl overflow-hidden"
-        style={{ background: '#f8fafc', border: '1px solid rgba(0, 217, 255, 0.06)' }}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        {/* Report Header */}
-        <div className="p-8">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-wide">SENTINEL AI</h2>
-              <p className="text-xs text-gray-500 font-mono tracking-[0.15em] uppercase mt-1">
-                CYBERSECURITY INTELLIGENCE REPORT
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] text-gray-500 font-mono">REPORT ID: {reportId}</p>
-              <p className="text-[11px] text-gray-500 font-mono">GENERATED: {new Date().toLocaleString()}</p>
-              <p className="text-[11px] text-gray-500 font-mono">CODESTORM HACKATHON 2K26</p>
-            </div>
+      <div className="report-preview">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, paddingBottom: 16, borderBottom: '2px solid #080C18' }}>
+          <div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#080C18', letterSpacing: 1 }}>SENTINEL AI</div>
+            <div style={{ fontSize: 12, color: '#6B7280', letterSpacing: 2, fontFamily: 'monospace' }}>CYBERSECURITY INTELLIGENCE REPORT</div>
           </div>
-
-          {/* Analyst Score + Session Summary */}
-          <div className="grid grid-cols-2 gap-8 mb-8">
-            <div>
-              <p className="text-[10px] text-gray-500 font-mono tracking-[0.15em] uppercase mb-2">Analyst Score</p>
-              <p className="text-4xl font-black text-gray-900 font-mono">{awarenessScore}/100</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-sm">{level.dot}</span>
-                <span className="text-sm text-gray-600">{level.label}</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-500 font-mono tracking-[0.15em] uppercase mb-2">Session Summary</p>
-              <div className="space-y-0">
-                <div className="flex items-center justify-between py-2.5 border-b border-gray-200">
-                  <span className="text-sm text-gray-700">Total Scans</span>
-                  <span className="text-sm font-bold text-gray-900 font-mono">{stats.totalScans}</span>
-                </div>
-                <div className="flex items-center justify-between py-2.5 border-b border-gray-200">
-                  <span className="text-sm text-gray-700">Threats Found</span>
-                  <span className="text-sm font-bold font-mono" style={{ color: '#FF2D55' }}>{stats.threatsDetected}</span>
-                </div>
-                <div className="flex items-center justify-between py-2.5">
-                  <span className="text-sm text-gray-700">Safe Content</span>
-                  <span className="text-sm font-bold font-mono" style={{ color: '#00C853' }}>{stats.safeCleared}</span>
-                </div>
-              </div>
-            </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, color: '#6B7280', fontFamily: 'monospace' }}>REPORT ID: {reportId}</div>
+            <div style={{ fontSize: 11, color: '#6B7280', fontFamily: 'monospace' }}>GENERATED: {date}</div>
+            <div style={{ fontSize: 11, color: '#6B7280', fontFamily: 'monospace' }}>CODESTORM HACKATHON 2K26</div>
           </div>
+        </div>
 
-          {/* Individual Scan Results */}
-          {scanHistory.length > 0 && (
-            <div className="mb-6">
-              <p className="text-[10px] text-gray-500 font-mono tracking-[0.15em] uppercase mb-3">Detailed Findings</p>
-              <div className="space-y-3">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6B7280', marginBottom: 8 }}>ANALYST SCORE</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: '#080C18' }}>{awarenessScore}/100</div>
+            <div style={{ fontSize: 14, color: '#374151' }}>{levelFor(awarenessScore)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: '#6B7280', marginBottom: 8 }}>SESSION SUMMARY</div>
+            <table style={{ width: '100%', fontSize: 13 }}>
+              <tbody>
+                <tr><td style={{ color: '#6B7280', padding: 8 }}>Total Scans</td><td style={{ fontWeight: 700, textAlign: 'right', padding: 8 }}>{stats.totalScans}</td></tr>
+                <tr><td style={{ color: '#6B7280', padding: 8 }}>Threats Found</td><td style={{ fontWeight: 700, textAlign: 'right', color: '#dc2626', padding: 8 }}>{stats.threatsDetected}</td></tr>
+                <tr><td style={{ color: '#6B7280', padding: 8 }}>Safe Content</td><td style={{ fontWeight: 700, textAlign: 'right', color: '#16a34a', padding: 8 }}>{stats.safeCleared}</td></tr>
+                {simulatorScore !== null && <tr><td style={{ color: '#6B7280', padding: 8 }}>Simulator Score</td><td style={{ fontWeight: 700, textAlign: 'right', padding: 8 }}>{simulatorScore}pts</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {scanHistory.length > 0 && (
+          <div style={{ marginTop: 20, borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#374151', marginBottom: 12 }}>DETAILED FINDINGS</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: '#F9FAFB' }}>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', border: '1px solid #e5e7eb' }}>Classification</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', border: '1px solid #e5e7eb' }}>Severity</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', border: '1px solid #e5e7eb' }}>Confidence</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', border: '1px solid #e5e7eb' }}>Attack Vector</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', border: '1px solid #e5e7eb' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
                 {scanHistory.map((scan, i) => (
-                  <div key={scan.id} className="p-3 rounded-lg border border-gray-200">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-mono text-gray-400">#{i + 1}</span>
-                      <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded"
-                        style={{
-                          background: scan.analysis.classification === 'Safe' ? '#dcfce7' : '#fef2f2',
-                          color: scan.analysis.classification === 'Safe' ? '#166534' : '#991b1b',
-                        }}>
-                        {scan.analysis.classification}
-                      </span>
-                      <span className="text-[10px] font-mono text-gray-400">{scan.analysis.threat_id}</span>
-                    </div>
-                    <p className="text-xs text-gray-700">{scan.analysis.headline}</p>
-                    <p className="text-[10px] text-gray-500 mt-1">→ {scan.analysis.recommended_action}</p>
-                  </div>
+                  <tr key={i}>
+                    <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb', fontWeight: 700 }}>{scan.analysis?.classification}</td>
+                    <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb' }}>{scan.analysis?.severity}</td>
+                    <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb' }}>{scan.analysis?.confidence}%</td>
+                    <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb' }}>{scan.analysis?.attack_vector}</td>
+                    <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb', fontSize: 11, color: '#374151' }}>{scan.analysis?.recommended_action?.substring(0, 80)}...</td>
+                  </tr>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="text-center pt-4 border-t border-gray-200">
-            <p className="text-[11px] text-gray-400 font-mono">
-              Generated by SENTINEL AI — CODESTORM HACKATHON 2K26 · ATU School of Engineering · Powered by Claude AI
-            </p>
+              </tbody>
+            </table>
           </div>
+        )}
+
+        <div style={{ marginTop: 24, paddingTop: 12, borderTop: '1px solid #e5e7eb', fontSize: 10, color: '#9CA3AF', textAlign: 'center', fontFamily: 'monospace' }}>
+          Generated by SENTINEL AI — CODESTORM HACKATHON 2K26 · GTU School of Engineering · Powered by Claude AI
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
