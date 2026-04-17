@@ -17,7 +17,7 @@ export default function Header() {
 
   return (
     <div className="topbar no-print">
-      <span className="topbar-title">CODESTORM 2K26</span>
+      <span className="topbar-title">SENTINEL AI</span>
       <div className="live-badge"><div className="live-dot" />&nbsp;LIVE</div>
       <span className="topbar-chip chip-threats">🚨 {stats.threatsDetected} Threats</span>
       <span className="topbar-chip chip-safe">✅ {stats.safeCleared} Safe</span>
