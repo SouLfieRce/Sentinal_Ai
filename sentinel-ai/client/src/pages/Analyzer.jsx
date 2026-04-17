@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useThreatAnalysis } from '../hooks/useThreatAnalysis';
-import AnalysisLoader from '../components/AnalysisLoader';
 import ThreatMeter from '../components/ThreatMeter';
 import ThreatDNA from '../components/ThreatDNA';
 
@@ -54,10 +53,6 @@ export default function Analyzer() {
 
   return (
     <div>
-      {/* Loading Overlay */}
-      <AnimatePresence>
-        {loading && <AnalysisLoader stage={loadingStage} stages={loadingStages} />}
-      </AnimatePresence>
 
       {/* Title + Deep Scan */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -90,6 +85,17 @@ export default function Analyzer() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Input Panel */}
         <div className="card card-glow" style={{ position: 'relative' }}>
+          {/* Loading overlay - inside card */}
+          {loading && (
+            <div className="load-overlay">
+              <div style={{ width: 60, height: 60, border: '2px solid rgba(0,255,234,0.1)', borderTop: '2px solid #00FFEA', borderRadius: '50%', animation: 'radar 1.5s linear infinite' }} />
+              <div className="load-msg">{loadingStages[loadingStage]}</div>
+              <div style={{ width: '80%', position: 'relative', overflow: 'hidden', height: 2 }}>
+                <div className="scan-bar" />
+              </div>
+              <div style={{ fontSize: 10, color: '#4A5568', fontFamily: "'Space Mono', monospace" }}>SENTINEL ENGINE ACTIVE</div>
+            </div>
+          )}
           <div className="sec-label">INPUT TYPE</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             {TABS.map(t => (
